@@ -69,7 +69,7 @@
 <div class="total">
     当前小组：<span id="gName">-</span> &nbsp;&nbsp;
     原始总分：<span id="t1">0</span> &nbsp;&nbsp;
-    双倍结算：<span id="t2">0</span>
+    倍数结算总分：<span id="t2">0</span>
 </div>
 
 <!-- 成员列表 -->
@@ -87,12 +87,20 @@
 
 <script>
 // ==================== 密码设置（自己改这里）====================
-const DEFAULT_PWD = "11223344556677889900";
+const DEFAULT_PWD = "88888888";
 // ==============================================================
 
-let data = JSON.parse(localStorage.getItem("scoreSysV2")) || {
-    groups: [], currentIndex: -1
-};
+// 初始化数据 + 兼容旧版双倍分数据
+let data = JSON.parse(localStorage.getItem("scoreSysV2")) || { groups: [], currentIndex: -1 };
+// 兼容旧数据：将旧的double字段转换为积分类型字段
+data.groups.forEach(group => {
+    group.members.forEach(mem => {
+        if (mem.double !== undefined && mem.type === undefined) {
+            mem.type = mem.double ? "double" : "normal";
+            delete mem.double;
+        }
+    });
+});
 
 function save(){
     localStorage.setItem("scoreSysV2", JSON.stringify(data));
@@ -158,7 +166,9 @@ function delGroup(){
 function renderMember(){
     let list = document.getElementById("memberList");
     let tip = document.getElementById("emptyTip");
-    list.innerHTML = ""; let t1=0,t2=0;
+    list.innerHTML = ""; 
+    let t1=0, t2=0; // t1=原始总分，t2=倍数结算总分
+    
     if(data.currentIndex<0 || data.groups[data.currentIndex].members.length===0){
         tip.style.display="block";
         document.getElementById("t1").textContent=0;
@@ -166,17 +176,30 @@ function renderMember(){
         return;
     }
     tip.style.display="none";
+    
     let g = data.groups[data.currentIndex];
     g.members.forEach((m,i)=>{
-        t1+=m.score;
-        let real = m.double?m.score*2:m.score; t2+=real;
+        t1 += m.score;
+        
+        // 计算倍数得分 + 类型文字
+        let realScore = m.score;
+        let typeText = "普通分";
+        if (m.type === "double") {
+            realScore = m.score * 2;
+            typeText = "✅双倍分";
+        } else if (m.type === "triple") {
+            realScore = m.score * 3;
+            typeText = "✅三倍分";
+        }
+        t2 += realScore;
+
         list.innerHTML+=`
         <tr>
             <td>${m.name}</td>
             <td>${m.score}</td>
-            <td>${m.double?"✅双倍分":"普通分"}</td>
+            <td>${typeText}</td>
             <td>
-                <button class="btn" onclick="toggleDouble(${i})">切换双倍</button>
+                <button class="btn" onclick="toggleScoreType(${i})">切换积分类型</button>
                 <button class="btn btn-orange" onclick="clearOneScore(${i})">清零</button>
                 <button class="btn btn-red" onclick="delMember(${i})">删除</button>
             </td>
@@ -193,7 +216,8 @@ function addMember(){
     if(!name)return;
     let g = data.groups[data.currentIndex];
     if(g.members.some(x=>x.name===name))return alert("已存在");
-    g.members.push({name,score:0,double:false});
+    // 默认普通分
+    g.members.push({name, score:0, type:"normal"});
     document.getElementById("name").value="";
     save(); renderMember();
 }
@@ -212,10 +236,17 @@ function addScore(){
     save(); renderMember();
 }
 
-// 切换双倍
-function toggleDouble(i){
+// 切换积分类型（普通→双倍→三倍→普通）
+function toggleScoreType(i){
     let g = data.groups[data.currentIndex];
-    g.members[i].double = !g.members[i].double;
+    let mem = g.members[i];
+    if (mem.type === "normal") {
+        mem.type = "double";
+    } else if (mem.type === "double") {
+        mem.type = "triple";
+    } else {
+        mem.type = "normal";
+    }
     save(); renderMember();
 }
 
@@ -255,14 +286,28 @@ function exportExcel(){
     if(data.currentIndex<0)return;
     let g = data.groups[data.currentIndex];
     let csv = `小组：${g.name}\n姓名,积分,类型,实际得分\n`;
+    
     g.members.forEach(m=>{
-        let type = m.double?"双倍分":"普通分";
-        let real = m.double?m.score*2:m.score;
+        let type = "普通分";
+        let real = m.score;
+        if (m.type === "double") {
+            type = "双倍分";
+            real = m.score * 2;
+        } else if (m.type === "triple") {
+            type = "三倍分";
+            real = m.score * 3;
+        }
         csv+=`${m.name},${m.score},${type},${real}\n`;
     });
+    
     let t1 = g.members.reduce((s,m)=>s+m.score,0);
-    let t2 = g.members.reduce((s,m)=>s+(m.double?m.score*2:m.score),0);
-    csv+=`\n原始总分,${t1}\n双倍总分,${t2}`;
+    let t2 = g.members.reduce((s,m)=>{
+        if(m.type==="double") return s + m.score*2;
+        if(m.type==="triple") return s + m.score*3;
+        return s + m.score;
+    },0);
+    
+    csv+=`\n原始总分,${t1}\n倍数结算总分,${t2}`;
     let blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
     let a = document.createElement("a");
     a.href=URL.createObjectURL(blob);
