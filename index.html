@@ -290,12 +290,42 @@ function addMember(){
     let g = data.groups[data.currentIndex]; if(g.members.some(x=>x.name===name))return alert("已存在");
     g.members.push({name,score:0,type:"normal"}); document.getElementById("name").value=""; save(); renderMember();
 }
+// 🔥🔥🔥 修复后的加分函数（核心修复）
 function addScore(){
-    if(data.currentIndex<0)return;
-    let name = document.getElementById("userName").value.trim(); let score = +document.getElementById("score").value||0;
-    let g = data.groups[data.currentIndex]; let m = g.members.find(x=>x.name===name);
-    if(!m)return alert("成员不存在"); m.score += score;
-    document.getElementById("userName").value=""; document.getElementById("score").value=""; save(); renderMember();
+    // 1. 先检查是否选择小组，添加提示
+    if(data.currentIndex<0){
+        alert("请先选择一个小组！");
+        return;
+    }
+    // 2. 获取输入值并去除首尾空格
+    let name = document.getElementById("userName").value.trim();
+    let score = +document.getElementById("score").value||0;
+
+    // 3. 检查姓名是否为空
+    if(!name){
+        alert("请输入要加分的成员姓名！");
+        return;
+    }
+    // 4. 检查分数是否有效
+    if(score === 0){
+        alert("请输入有效的加分数值！");
+        return;
+    }
+
+    let g = data.groups[data.currentIndex];
+    let m = g.members.find(x=>x.name===name);
+    
+    if(!m){
+        alert(`成员「${name}」不存在，请检查姓名是否正确！`);
+        return;
+    }
+    
+    m.score += score;
+    // 清空输入框
+    document.getElementById("userName").value="";
+    document.getElementById("score").value="";
+    save(); renderMember();
+    alert(`成功给「${name}」加 ${score} 分！`);
 }
 function toggleScoreType(i){
     let g = data.groups[data.currentIndex]; let mem = g.members[i];
