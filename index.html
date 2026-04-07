@@ -20,148 +20,119 @@
         th{background:#f7fafc}
         .total{font-size:18px;font-weight:bold;color:#2b6cb0;margin:10px 0}
         .empty{text-align:center;padding:20px;color:#718096}
-        .tip{background:#e6f7ff;border-left:4px solid #4299e1;padding:12px 16px;margin-bottom:16px;border-radius:8px;color:#2d3748;line-height:1.6}
         .hidden{display:none !important}
+        .user-table{font-size:14px}
+        .user-info-bar{text-align:right;padding:10px;color:#2d3748;font-weight:bold}
 
-        /* 登录页面样式 */
-        .login-page{position:fixed;top:0;left:0;width:100%;height:100%;background:#f5f7fa;display:flex;align-items:center;justify-content:center;z-index:9999}
-        .login-container{background:white;padding:40px;border-radius:16px;box-shadow:0 5px 20px rgba(0,0,0,0.1);width:380px}
-        .tab{display:flex;margin-bottom:20px}
-        .tab-btn{flex:1;padding:12px;border:none;background:#f7fafc;cursor:pointer;font-size:16px}
-        .tab-btn.active{background:#4299e1;color:white}
-        .form-item{margin:16px 0}
-        .form-item input{width:100%;margin:0}
-        
-        /* 用户信息栏 + 退出登录 */
-        .user-bar{background:white;padding:12px 20px;border-radius:8px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 5px rgba(0,0,0,0.05)}
-        .user-bar span{font-weight:bold;color:#2d3748}
+        /* 登录遮罩 */
+        #loginMask{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:999;display:flex;align-items:center;justify-content:center}
+        .loginBox{background:white;padding:30px;border-radius:12px;width:320px}
+        .loginBox h3{margin-bottom:16px;text-align:center}
     </style>
 </head>
 
 <body>
-<!-- 登录/注册页面 -->
-<div class="login-page" id="loginPage">
-    <div class="login-container">
-        <h1>🔐 积分系统登录</h1>
-        <div class="tab">
-            <button class="tab-btn active" onclick="switchTab('login')">用户登录</button>
-            <button class="tab-btn" onclick="switchTab('register')">注册账号</button>
-        </div>
-
-        <!-- 登录表单 -->
-        <div id="loginForm">
-            <div class="form-item">
-                <input type="text" id="loginUser" placeholder="账号">
-            </div>
-            <div class="form-item">
-                <input type="password" id="loginPwd" placeholder="密码">
-            </div>
-            <button class="btn" style="width:100%" onclick="userLogin()">登录系统</button>
-            <div style="text-align:center;margin-top:12px;color:#718096">
-                首次使用请先注册【管理员账号】
-            </div>
-        </div>
-
-        <!-- 注册表单 -->
-        <div id="registerForm" class="hidden">
-            <div class="form-item">
-                <input type="text" id="regUser" placeholder="账号">
-            </div>
-            <div class="form-item">
-                <input type="password" id="regPwd" placeholder="密码">
-            </div>
-            <div class="form-item">
-                <select id="regRole">
-                    <option value="admin">管理员</option>
-                    <option value="user">普通用户</option>
-                </select>
-            </div>
-            <button class="btn btn-green" style="width:100%" onclick="userRegister()">注册账号</button>
-        </div>
+<!-- 登录弹窗 -->
+<div id="loginMask">
+    <div class="loginBox">
+        <h3>请输入账号密码</h3>
+        <input type="text" id="accountInput" placeholder="账号" style="width:100%;margin-bottom:8px">
+        <input type="password" id="pwdInput" placeholder="密码" style="width:100%">
+        <button class="btn" style="width:100%;margin-top:12px" onclick="checkLogin()">登录</button>
     </div>
 </div>
 
-<!-- 主系统界面 -->
-<div id="mainSystem" class="hidden">
-    <!-- 👈 退出登录功能模块（写入网页顶部） -->
-    <div class="user-bar">
-        <div>
-            登录用户：<span id="showUser"></span> | 身份：<span id="showRole"></span>
-        </div>
-        <button class="btn btn-red" onclick="logout()">🚪 退出登录</button>
-    </div>
+<!-- 用户信息栏 + 退出登录 -->
+<div class="user-info-bar hidden" id="userBar">
+    当前身份：<span id="userRole"></span> | <span id="userName"></span>
+    <button class="btn btn-red" onclick="logout()">退出登录</button>
+</div>
 
-    <h1>🏅 小组学习积分管理系统</h1>
+<h1>🏅 小组学习积分系统</h1>
 
-    <!-- 使用提示 -->
-    <div class="tip">
-        <strong>📌 使用说明：</strong><br>
-        1. 积分类型：点击【切换积分类型】循环切换 → 普通分×1 / 双倍分×2 / 三倍分×3<br>
-        2. 操作流程：创建小组 → 添加成员 → 录入积分 → 导出Excel<br>
-        3. 管理员：全部权限 | 普通用户：仅查看、加分、导出<br>
-        4. 点击顶部【退出登录】可切换账号
+<!-- 🔴 管理员专属：用户管理面板（创建账号） -->
+<div class="card hidden" id="adminPanel">
+    <h3>👑 管理员 - 用户账号管理</h3>
+    <div class="flex">
+        <input id="newAccount" placeholder="新账号">
+        <input id="newPwd" placeholder="密码">
+        <select id="newRole">
+            <option value="user">普通用户</option>
+            <option value="admin">管理员</option>
+        </select>
+        <button class="btn btn-green" onclick="createAccount()">创建账号</button>
     </div>
+    <table class="user-table">
+        <thead>
+            <tr><th>账号</th><th>角色</th></tr>
+        </thead>
+        <tbody id="accountList"></tbody>
+    </table>
+</div>
 
-    <!-- 小组管理 -->
-    <div class="card">
-        <div class="flex">
-            <input id="newGroup" placeholder="小组名称">
-            <button class="btn" onclick="createGroup()">创建小组</button>
-            <select id="groupSel" onchange="switchGroup()"></select>
-            <button class="btn btn-red admin-only" onclick="delGroup()">删除当前小组</button>
-            <button class="btn btn-orange admin-only" onclick="clearGroupScore()">清空本组积分</button>
-            <button class="btn btn-red admin-only" onclick="clearAllData()" style="background:#e53e3e">清空所有数据</button>
-        </div>
+<!-- 小组管理 -->
+<div class="card">
+    <div class="flex">
+        <input id="newGroup" placeholder="小组名称">
+        <button class="btn" onclick="createGroup()">创建小组</button>
+        <select id="groupSel" onchange="switchGroup()"></select>
+        <button class="btn btn-red" onclick="delGroup()">删除当前小组</button>
+        <button class="btn btn-orange" onclick="clearGroupScore()">清空本组积分</button>
+        <button class="btn btn-red" onclick="clearAllData()" style="background:#e53e3e">清空所有数据</button>
     </div>
+</div>
 
-    <!-- 添加成员 -->
-    <div class="card">
-        <input id="name" placeholder="成员姓名">
-        <button class="btn admin-only" onclick="addMember()">添加成员</button>
-        <button class="btn btn-green" onclick="exportExcel()">导出本组Excel</button>
-    </div>
+<!-- 添加成员 -->
+<div class="card">
+    <input id="name" placeholder="成员姓名">
+    <button class="btn" onclick="addMember()">添加成员</button>
+    <button class="btn btn-green" onclick="exportExcel()">导出本组Excel</button>
+</div>
 
-    <!-- 录入分数 -->
-    <div class="card">
-        <input id="userName" placeholder="成员姓名">
-        <input id="score" type="number" placeholder="增加分数">
-        <button class="btn" onclick="addScore()">确认加分</button>
-    </div>
+<!-- 录入分数 -->
+<div class="card">
+    <input id="userName" placeholder="成员姓名">
+    <input id="score" type="number" placeholder="增加分数">
+    <button class="btn" onclick="addScore()">确认加分</button>
+</div>
 
-    <!-- 总分 -->
-    <div class="total">
-        当前小组：<span id="gName">-</span> &nbsp;&nbsp;
-        原始总分：<span id="t1">0</span> &nbsp;&nbsp;
-        倍数结算总分：<span id="t2">0</span>
-    </div>
+<!-- 总分 -->
+<div class="total">
+    当前小组：<span id="gName">-</span> &nbsp;&nbsp;
+    原始总分：<span id="t1">0</span> &nbsp;&nbsp;
+    倍数结算总分：<span id="t2">0</span>
+</div>
 
-    <!-- 成员列表 -->
-    <div class="card">
-        <table>
-            <thead>
-                <tr>
-                    <th>姓名</th><th>积分</th><th>类型</th><th>操作</th>
-                </tr>
-            </thead>
-            <tbody id="memberList"></tbody>
-        </table>
-        <div id="emptyTip" class="empty" style="display:none">暂无成员</div>
-    </div>
+<!-- 成员列表 -->
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>姓名</th><th>积分</th><th>类型</th><th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="memberList"></tbody>
+    </table>
+    <div id="emptyTip" class="empty" style="display:none">暂无成员</div>
 </div>
 
 <script>
+// ==================== 核心配置 ====================
+// 【超级管理员】初始账号密码（仅这一个默认账号）
+const SUPER_ADMIN = { account: "admin", pwd: "88888888" };
 // 当前登录用户
 let currentUser = null;
+// ===================================================
 
-// 账号数据管理
-function getUsers(){
-    return JSON.parse(localStorage.getItem("scoreUsers")) || [];
+// 1. 账号数据存储
+function getAccounts(){
+    return JSON.parse(localStorage.getItem("scoreAccounts")) || [];
 }
-function saveUsers(users){
-    localStorage.setItem("scoreUsers", JSON.stringify(users));
+function saveAccounts(accounts){
+    localStorage.setItem("scoreAccounts", JSON.stringify(accounts));
 }
 
-// 积分系统数据
+// 2. 积分系统原有数据
 let data = JSON.parse(localStorage.getItem("scoreSysV2")) || { groups: [], currentIndex: -1 };
 data.groups.forEach(group => {
     group.members.forEach(mem => {
@@ -171,69 +142,104 @@ data.groups.forEach(group => {
         }
     });
 });
-function save(){ localStorage.setItem("scoreSysV2", JSON.stringify(data)); }
-
-// 登录/注册切换
-function switchTab(type){
-    document.getElementById("loginForm").classList.toggle("hidden", type!=="login");
-    document.getElementById("registerForm").classList.toggle("hidden", type!=="register");
-    document.querySelectorAll(".tab-btn").forEach((btn,i)=>btn.classList.toggle("active", i===(type==="login"?0:1)));
+function save(){
+    localStorage.setItem("scoreSysV2", JSON.stringify(data));
 }
 
-// 注册
-function userRegister(){
-    let user = document.getElementById("regUser").value.trim();
-    let pwd = document.getElementById("regPwd").value.trim();
-    let role = document.getElementById("regRole").value;
-    if(!user || !pwd) return alert("请输入账号密码！");
-    let users = getUsers();
-    if(users.some(item=>item.user===user)) return alert("账号已存在！");
-    users.push({user,pwd,role});
-    saveUsers(users);
-    alert("注册成功！请登录");
-    switchTab("login");
-}
+// 3. 登录验证（支持超级管理员+子账号）
+function checkLogin(){
+    let account = document.getElementById("accountInput").value.trim();
+    let pwd = document.getElementById("pwdInput").value.trim();
+    let accounts = getAccounts();
 
-// 登录
-function userLogin(){
-    let user = document.getElementById("loginUser").value.trim();
-    let pwd = document.getElementById("loginPwd").value.trim();
-    let users = getUsers();
-    let target = users.find(item=>item.user===user && item.pwd===pwd);
-    if(!target) return alert("账号或密码错误！");
-    
-    currentUser = target;
-    // 显示主系统，隐藏登录页
-    document.getElementById("loginPage").classList.add("hidden");
-    document.getElementById("mainSystem").classList.remove("hidden");
-    // 显示用户信息
-    document.getElementById("showUser").textContent = target.user;
-    document.getElementById("showRole").textContent = target.role==="admin"?"管理员":"普通用户";
-    
-    // 普通用户隐藏管理员按钮
-    if(target.role === "user"){
-        document.querySelectorAll(".admin-only").forEach(el=>el.classList.add("hidden"));
+    // 验证超级管理员
+    if(account === SUPER_ADMIN.account && pwd === SUPER_ADMIN.pwd){
+        currentUser = { account: "超级管理员", role: "admin" };
+        loginSuccess();
+        return;
     }
+
+    // 验证子账号
+    let target = accounts.find(item => item.account === account && item.pwd === pwd);
+    if(target){
+        currentUser = target;
+        loginSuccess();
+        return;
+    }
+
+    alert("账号或密码错误！");
+}
+
+// 登录成功
+function loginSuccess(){
+    document.getElementById("loginMask").style.display = "none";
+    document.getElementById("userBar").classList.remove("hidden");
+    document.getElementById("userName").textContent = currentUser.account;
+    document.getElementById("userRole").textContent = currentUser.role === "admin" ? "管理员" : "普通用户";
+
+    // 仅管理员显示账号管理面板
+    if(currentUser.role === "admin"){
+        document.getElementById("adminPanel").classList.remove("hidden");
+        renderAccountList();
+    }
+
     init();
 }
 
-// ======================
-// 👈 退出登录功能（核心）
-// ======================
+// 退出登录
 function logout(){
-    // 1. 清空当前登录用户信息
     currentUser = null;
-    // 2. 显示登录页面，隐藏主系统
-    document.getElementById("loginPage").classList.remove("hidden");
-    document.getElementById("mainSystem").classList.add("hidden");
-    // 3. 清空登录框，保护隐私
-    document.getElementById("loginUser").value = "";
-    document.getElementById("loginPwd").value = "";
-    // 4. 提示
-    alert("已成功退出登录！");
+    document.getElementById("loginMask").style.display = "flex";
+    document.getElementById("userBar").classList.add("hidden");
+    document.getElementById("adminPanel").classList.add("hidden");
+    document.getElementById("accountInput").value = "";
+    document.getElementById("pwdInput").value = "";
 }
 
-// 原有系统功能
+// 4. 🔴 仅管理员可创建账号
+function createAccount(){
+    if(!currentUser || currentUser.role !== "admin"){
+        alert("无权限！仅管理员可创建账号");
+        return;
+    }
+    let account = document.getElementById("newAccount").value.trim();
+    let pwd = document.getElementById("newPwd").value.trim();
+    let role = document.getElementById("newRole").value;
+
+    if(!account || !pwd){
+        alert("请输入账号和密码！");
+        return;
+    }
+
+    let accounts = getAccounts();
+    if(accounts.some(item => item.account === account) || account === SUPER_ADMIN.account){
+        alert("账号已存在！");
+        return;
+    }
+
+    accounts.push({ account, pwd, role });
+    saveAccounts(accounts);
+    alert("创建成功！");
+    document.getElementById("newAccount").value = "";
+    document.getElementById("newPwd").value = "";
+    renderAccountList();
+}
+
+// 渲染账号列表
+function renderAccountList(){
+    let list = document.getElementById("accountList");
+    list.innerHTML = "";
+    let accounts = getAccounts();
+    accounts.forEach(item => {
+        list.innerHTML += `
+        <tr>
+            <td>${item.account}</td>
+            <td>${item.role==="admin"?"管理员":"普通用户"}</td>
+        </tr>`;
+    });
+}
+
+// ==================== 原有积分系统功能（无修改） ====================
 function init(){ refreshGroupList(); renderMember(); }
 function refreshGroupList(){
     let sel = document.getElementById("groupSel"); sel.innerHTML = "";
@@ -266,16 +272,13 @@ function renderMember(){
         if(m.type==="double"){realScore=m.score*2; typeText="✅双倍分";}
         if(m.type==="triple"){realScore=m.score*3; typeText="✅三倍分";}
         t2+=realScore;
-        let adminBtns = currentUser.role==="admin" ? `
-            <button class="btn btn-orange" onclick="clearOneScore(${i})">清零</button>
-            <button class="btn btn-red" onclick="delMember(${i})">删除</button>
-        ` : '';
         list.innerHTML+=`
         <tr>
             <td>${m.name}</td><td>${m.score}</td><td>${typeText}</td>
             <td>
                 <button class="btn" onclick="toggleScoreType(${i})">切换积分类型</button>
-                ${adminBtns}
+                <button class="btn btn-orange" onclick="clearOneScore(${i})">清零</button>
+                <button class="btn btn-red" onclick="delMember(${i})">删除</button>
             </td>
         </tr>`;
     });
@@ -304,7 +307,7 @@ function toggleScoreType(i){
 function delMember(i){ if(!confirm("确定删除？"))return; let g=data.groups[data.currentIndex]; g.members.splice(i,1); save(); renderMember(); }
 function clearOneScore(i){ let g=data.groups[data.currentIndex]; g.members[i].score=0; save(); renderMember(); }
 function clearGroupScore(){ if(data.currentIndex<0)return; if(!confirm("确定清空本小组所有积分？"))return; let g=data.groups[data.currentIndex]; g.members.forEach(m=>m.score=0); save(); renderMember(); }
-function clearAllData(){ if(!confirm("危险操作！确定清空所有数据？"))return; data={groups:[],currentIndex:-1}; save(); refreshGroupList(); renderMember(); }
+function clearAllData(){ if(!confirm("危险操作！确定清空所有小组、成员、积分？"))return; data={groups:[],currentIndex:-1}; save(); refreshGroupList(); renderMember(); }
 function exportExcel(){
     if(data.currentIndex<0)return; let g=data.groups[data.currentIndex];
     let csv = `小组：${g.name}\n姓名,积分,类型,实际得分\n`;
