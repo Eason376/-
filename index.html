@@ -3,11 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- 🔥 防缓存：添加版本号 -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    <title>小组积分管理系统 v3.0</title>
+    <title>小组积分管理系统</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;font-family:"微软雅黑",Arial,sans-serif}
         body{background:#f5f7fa;padding:20px;max-width:1000px;margin:0 auto}
@@ -36,7 +32,7 @@
 </head>
 
 <body>
-
+<!-- 登录弹窗 -->
 <div id="loginMask">
     <div class="loginBox">
         <h3>请输入账号密码</h3>
@@ -46,13 +42,15 @@
     </div>
 </div>
 
+<!-- 用户信息栏 + 退出登录 -->
 <div class="user-info-bar hidden" id="userBar">
     当前身份：<span id="userRole"></span> | <span id="userName"></span>
     <button class="btn btn-red" onclick="logout()">退出登录</button>
 </div>
 
-<h1>🏅 小组学习积分系统 v3.0</h1>
+<h1>🏅 小组学习积分系统</h1>
 
+<!-- 🔴 管理员专属：用户管理面板（创建账号） -->
 <div class="card hidden" id="adminPanel">
     <h3>👑 管理员 - 用户账号管理</h3>
     <div class="flex">
@@ -72,6 +70,7 @@
     </table>
 </div>
 
+<!-- 小组管理 -->
 <div class="card">
     <div class="flex">
         <input id="newGroup" placeholder="小组名称">
@@ -83,24 +82,28 @@
     </div>
 </div>
 
+<!-- 添加成员 -->
 <div class="card">
     <input id="name" placeholder="成员姓名">
     <button class="btn" onclick="addMember()">添加成员</button>
     <button class="btn btn-green" onclick="exportExcel()">导出本组Excel</button>
 </div>
 
+<!-- 录入分数 -->
 <div class="card">
     <input id="userName" placeholder="成员姓名">
-    <input id="score" type="number" placeholder="增加分数" min="1">
+    <input id="score" type="number" placeholder="增加分数">
     <button class="btn" onclick="addScore()">确认加分</button>
 </div>
 
+<!-- 总分 -->
 <div class="total">
     当前小组：<span id="gName">-</span> &nbsp;&nbsp;
     原始总分：<span id="t1">0</span> &nbsp;&nbsp;
     倍数结算总分：<span id="t2">0</span>
 </div>
 
+<!-- 成员列表 -->
 <div class="card">
     <table>
         <thead>
@@ -115,10 +118,10 @@
 
 <script>
 // ==================== 核心配置 ====================
+// 【超级管理员】初始账号密码（仅这一个默认账号）
 const SUPER_ADMIN = { account: "admin", pwd: "88888888" };
+// 当前登录用户
 let currentUser = null;
-// 🔥 版本控制：强制更新缓存
-const VERSION = "3.0";
 // ===================================================
 
 // 1. 账号数据存储
@@ -129,53 +132,34 @@ function saveAccounts(accounts){
     localStorage.setItem("scoreAccounts", JSON.stringify(accounts));
 }
 
-// 2. 积分系统数据 - 带版本控制
-function initData(){
-    let savedData = localStorage.getItem("scoreSysV2");
-    if(!savedData){
-        return { groups: [], currentIndex: -1, version: VERSION };
-    }
-    
-    let parsedData = JSON.parse(savedData);
-    // 版本不匹配时重置数据
-    if(parsedData.version !== VERSION){
-        alert("检测到版本更新，已重置数据以确保兼容性！");
-        return { groups: [], currentIndex: -1, version: VERSION };
-    }
-    
-    return parsedData;
-}
-
-let data = initData();
-// 数据迁移
+// 2. 积分系统原有数据
+let data = JSON.parse(localStorage.getItem("scoreSysV2")) || { groups: [], currentIndex: -1 };
 data.groups.forEach(group => {
     group.members.forEach(mem => {
         if (mem.double !== undefined && mem.type === undefined) {
             mem.type = mem.double ? "double" : "normal";
             delete mem.double;
         }
-        // 确保所有成员都有type字段
-        if(!mem.type) mem.type = "normal";
     });
 });
-
 function save(){
     localStorage.setItem("scoreSysV2", JSON.stringify(data));
-    console.log("数据已保存：", data);
 }
 
-// 3. 登录验证
+// 3. 登录验证（支持超级管理员+子账号）
 function checkLogin(){
     let account = document.getElementById("accountInput").value.trim();
     let pwd = document.getElementById("pwdInput").value.trim();
     let accounts = getAccounts();
 
+    // 验证超级管理员
     if(account === SUPER_ADMIN.account && pwd === SUPER_ADMIN.pwd){
         currentUser = { account: "超级管理员", role: "admin" };
         loginSuccess();
         return;
     }
 
+    // 验证子账号
     let target = accounts.find(item => item.account === account && item.pwd === pwd);
     if(target){
         currentUser = target;
@@ -186,19 +170,23 @@ function checkLogin(){
     alert("账号或密码错误！");
 }
 
+// 登录成功
 function loginSuccess(){
     document.getElementById("loginMask").style.display = "none";
     document.getElementById("userBar").classList.remove("hidden");
     document.getElementById("userName").textContent = currentUser.account;
     document.getElementById("userRole").textContent = currentUser.role === "admin" ? "管理员" : "普通用户";
 
+    // 仅管理员显示账号管理面板
     if(currentUser.role === "admin"){
         document.getElementById("adminPanel").classList.remove("hidden");
         renderAccountList();
     }
+
     init();
 }
 
+// 退出登录
 function logout(){
     currentUser = null;
     document.getElementById("loginMask").style.display = "flex";
@@ -208,6 +196,7 @@ function logout(){
     document.getElementById("pwdInput").value = "";
 }
 
+// 4. 🔴 仅管理员可创建账号
 function createAccount(){
     if(!currentUser || currentUser.role !== "admin"){
         alert("无权限！仅管理员可创建账号");
@@ -217,11 +206,17 @@ function createAccount(){
     let pwd = document.getElementById("newPwd").value.trim();
     let role = document.getElementById("newRole").value;
 
-    if(!account || !pwd){ alert("请输入账号和密码！"); return; }
+    if(!account || !pwd){
+        alert("请输入账号和密码！");
+        return;
+    }
+
     let accounts = getAccounts();
     if(accounts.some(item => item.account === account) || account === SUPER_ADMIN.account){
-        alert("账号已存在！"); return;
+        alert("账号已存在！");
+        return;
     }
+
     accounts.push({ account, pwd, role });
     saveAccounts(accounts);
     alert("创建成功！");
@@ -230,15 +225,21 @@ function createAccount(){
     renderAccountList();
 }
 
+// 渲染账号列表
 function renderAccountList(){
     let list = document.getElementById("accountList");
     list.innerHTML = "";
     let accounts = getAccounts();
     accounts.forEach(item => {
-        list.innerHTML += `<tr><td>${item.account}</td><td>${item.role==="admin"?"管理员":"普通用户"}</td></tr>`;
+        list.innerHTML += `
+        <tr>
+            <td>${item.account}</td>
+            <td>${item.role==="admin"?"管理员":"普通用户"}</td>
+        </tr>`;
     });
 }
 
+// ==================== 原有积分系统功能（无修改） ====================
 function init(){ refreshGroupList(); renderMember(); }
 function refreshGroupList(){
     let sel = document.getElementById("groupSel"); sel.innerHTML = "";
@@ -285,76 +286,17 @@ function renderMember(){
 }
 function addMember(){
     if(data.currentIndex<0)return alert("先选小组");
-    let name = document.getElementById("name").value.trim(); if(!name)return alert("请输入成员姓名！");
-    let g = data.groups[data.currentIndex];
-    // 强制去重，避免重复添加
-    if(g.members.some(x=>x.name.trim() === name)){
-        alert("该成员已存在！");
-        return;
-    }
-    g.members.push({name,score:0,type:"normal"});
-    document.getElementById("name").value="";
-    save(); renderMember();
-    alert(`成功添加成员：${name}`);
+    let name = document.getElementById("name").value.trim(); if(!name)return;
+    let g = data.groups[data.currentIndex]; if(g.members.some(x=>x.name===name))return alert("已存在");
+    g.members.push({name,score:0,type:"normal"}); document.getElementById("name").value=""; save(); renderMember();
 }
-
-// 🚀 彻底修复的加分函数（GitHub Pages专用）
-function addScore() {
-    console.log("开始加分流程...");
-    
-    // 1. 检查小组选择
-    if (data.currentIndex < 0 || !data.groups[data.currentIndex]) {
-        alert("❌ 请先选择一个有效的小组！");
-        return;
-    }
-
-    // 2. 获取并处理输入值
-    const inputName = document.getElementById("userName").value.trim();
-    const inputScore = parseInt(document.getElementById("score").value.trim(), 10);
-
-    // 3. 严格输入校验
-    if(!inputName){
-        alert("❌ 请输入要加分的成员姓名！");
-        return;
-    }
-    if(isNaN(inputScore) || inputScore <= 0){
-        alert("❌ 请输入有效的正整数分数！");
-        return;
-    }
-
-    // 4. 获取当前小组和成员
-    const currentGroup = data.groups[data.currentIndex];
-    const targetMember = currentGroup.members.find(m => m.name.trim().toLowerCase() === inputName.toLowerCase());
-
-    // 5. 成员匹配结果处理
-    if(!targetMember){
-        const memberNames = currentGroup.members.map(m => m.name).join("、");
-        alert(`❌ 成员「${inputName}」不存在！\n当前小组成员：${memberNames}`);
-        return;
-    }
-
-    // 6. 执行加分
-    const prevScore = targetMember.score;
-    targetMember.score += inputScore;
-    
-    // 7. 保存并刷新
-    save();
-    renderMember();
-    
-    // 8. 详细成功提示
-    alert(`✅ 加分成功！
-成员：${targetMember.name}
-加分：+${inputScore}
-之前：${prevScore}
-现在：${targetMember.score}`);
-    
-    // 9. 清空输入框
-    document.getElementById("userName").value = "";
-    document.getElementById("score").value = "";
-    
-    console.log("加分完成，当前数据：", targetMember);
+function addScore(){
+    if(data.currentIndex<0)return;
+    let name = document.getElementById("userName").value.trim(); let score = +document.getElementById("score").value||0;
+    let g = data.groups[data.currentIndex]; let m = g.members.find(x=>x.name===name);
+    if(!m)return alert("成员不存在"); m.score += score;
+    document.getElementById("userName").value=""; document.getElementById("score").value=""; save(); renderMember();
 }
-
 function toggleScoreType(i){
     let g = data.groups[data.currentIndex]; let mem = g.members[i];
     if(mem.type==="normal") mem.type="double";
@@ -365,7 +307,7 @@ function toggleScoreType(i){
 function delMember(i){ if(!confirm("确定删除？"))return; let g=data.groups[data.currentIndex]; g.members.splice(i,1); save(); renderMember(); }
 function clearOneScore(i){ let g=data.groups[data.currentIndex]; g.members[i].score=0; save(); renderMember(); }
 function clearGroupScore(){ if(data.currentIndex<0)return; if(!confirm("确定清空本小组所有积分？"))return; let g=data.groups[data.currentIndex]; g.members.forEach(m=>m.score=0); save(); renderMember(); }
-function clearAllData(){ if(!confirm("危险操作！确定清空所有小组、成员、积分？"))return; data={groups:[],currentIndex:-1,version:VERSION}; save(); refreshGroupList(); renderMember(); }
+function clearAllData(){ if(!confirm("危险操作！确定清空所有小组、成员、积分？"))return; data={groups:[],currentIndex:-1}; save(); refreshGroupList(); renderMember(); }
 function exportExcel(){
     if(data.currentIndex<0)return; let g=data.groups[data.currentIndex];
     let csv = `小组：${g.name}\n姓名,积分,类型,实际得分\n`;
@@ -385,16 +327,6 @@ function exportExcel(){
     let blob = new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"});
     let a = document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`${g.name}_积分表.csv`; a.click();
 }
-
-// 🔥 GitHub Pages 缓存解决方案：页面加载时自动刷新
-window.addEventListener('load', function() {
-    // 检查是否有缓存问题
-    const lastVersion = localStorage.getItem('lastVersion');
-    if(lastVersion !== VERSION){
-        localStorage.setItem('lastVersion', VERSION);
-        location.reload(true); // 强制刷新
-    }
-});
 </script>
 </body>
 </html>
